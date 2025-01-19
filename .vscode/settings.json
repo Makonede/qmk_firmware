@@ -27,6 +27,5 @@
   },
   "clangd.arguments": [
     "--header-insertion=never"
-  ],
-  "C_Cpp_Runner.msvcBatchPath": ""
+  ]
 }

@@ -105,6 +105,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 typedef enum VideoCommand : bool {
   VIDEO_INIT,
   VIDEO_FRAME,
+  VIDEO_END,
 } VideoCommand;
 
 typedef struct VideoInit {
@@ -120,23 +121,45 @@ typedef struct VideoReport {
   } data;
 } VideoReport;
 
-VideoInit videoInit = {};
-uint8_t *videoFrame;
-size_t videoFrameSize = 0;
-size_t videoFrameReceived = 0;
+static uint8_t videoMode = RGB_MATRIX_NONE;
+static VideoInit videoInit = {};
+static uint8_t *videoFrame;
+static size_t videoFrameSize = 0;
+static size_t videoFrameReceived = 0;
+static uint8_t videoLeds[RGB_MATRIX_LED_COUNT];
 
 void raw_hid_receive(uint8_t *data, uint8_t length) {
   VideoReport report = *(VideoReport *)data;
   switch (report.command) {
-    case VIDEO_INIT:
+    case VIDEO_INIT: {
+      // Save current matrix mode and initialize video data
+      videoMode = rgb_matrix_get_mode();
+      rgb_matrix_mode(RGB_MATRIX_NONE);
       videoInit = report.data.init;
       videoFrameSize = videoInit.leds * (videoInit.rgb ? 3 : 1);
       videoFrame = (uint8_t *)malloc(videoFrameSize);
       videoFrameReceived = 0;
-      // TODO: find and sort list of LEDs in frame
+
+      // Enumerate LEDs in frame
+      uint8_t ledIndex = 0;
+      RGB_MATRIX_USE_LIMITS(ledMin, ledMax);
+      for (uint8_t i = ledMin; i < ledMax; ++i) {
+        if (
+          videoInit.x <= g_led_config.point[i].x
+          && g_led_config.point[i].x <= videoInit.x + videoInit.width
+          && videoInit.y <= g_led_config.point[i].y
+          && g_led_config.point[i].y <= videoInit.y + videoInit.height
+        ) {
+          videoLeds[ledIndex++] = i;
+          if (ledIndex == videoInit.leds) break;
+        }
+      }
+
       break;
+    }
 
     case VIDEO_FRAME: {
+      // Write frame data until complete, may be split over several reports
       size_t remaining = videoFrameSize - videoFrameReceived;
       bool done = remaining <= sizeof report.data.frame;
       memcpy(
@@ -146,14 +169,30 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
       videoFrameReceived = done ? 0 : videoFrameReceived
         + sizeof report.data.frame;
 
-      if (done) {
-        // TODO: draw frame
+      // Draw frame
+      if (done) for (uint8_t i = 0; i < videoInit.leds; ++i) {
+        if (videoInit.rgb) rgb_matrix_set_color(
+          videoLeds[i], videoFrame[i * 3], videoFrame[i * 3 + 1],
+          videoFrame[i * 3 + 2]
+        );
+        else rgb_matrix_set_color(
+          videoLeds[i], videoFrame[i], videoFrame[i], videoFrame[i]
+        );
       }
+
+      break;
     }
+
+    case VIDEO_END:
+      // Free frame buffer and reset original matrix mode
+      free(videoFrame);
+      rgb_matrix_mode(videoMode);
+      break;
 
     default: return;
   }
 
+  // Acknowledge report
   uint8_t response[length];
   memset(response, 0, length);
   raw_hid_send(response, length);
