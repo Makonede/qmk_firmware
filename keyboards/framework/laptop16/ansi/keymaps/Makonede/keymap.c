@@ -142,8 +142,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
 
       // Enumerate LEDs in frame
       uint8_t ledIndex = 0;
-      RGB_MATRIX_USE_LIMITS(ledMin, ledMax);
-      for (uint8_t i = ledMin; i < ledMax; ++i) {
+      for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; ++i) {
         if (
           videoInit.x <= g_led_config.point[i].x
           && g_led_config.point[i].x <= videoInit.x + videoInit.width
