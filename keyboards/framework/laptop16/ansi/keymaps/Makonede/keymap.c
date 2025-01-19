@@ -186,13 +186,5 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
       // Free frame buffer and reset original matrix mode
       free(videoFrame);
       rgb_matrix_mode(videoMode);
-      break;
-
-    default: return;
   }
-
-  // Acknowledge report
-  uint8_t response[length];
-  memset(response, 0, length);
-  raw_hid_send(response, length);
 }

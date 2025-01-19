@@ -111,11 +111,11 @@ bool handle_hid(uint8_t *data, uint8_t length) {
 // Add hooks to handle raw HID commands.
 // Need add both functions to make it work when
 // either RAW_ENABLE or VIA_ENABLE are enabled.
-bool via_command_kb(uint8_t *data, uint8_t length) {
-    return handle_hid(data, length);
-}
-#ifndef VIA_ENABLE
-void raw_hid_receive(uint8_t *data, uint8_t length) {
-    handle_hid(data, length);
-}
-#endif
+// bool via_command_kb(uint8_t *data, uint8_t length) {
+//     return handle_hid(data, length);
+// }
+// #ifndef VIA_ENABLE
+// void raw_hid_receive(uint8_t *data, uint8_t length) {
+//     handle_hid(data, length);
+// }
+// #endif
