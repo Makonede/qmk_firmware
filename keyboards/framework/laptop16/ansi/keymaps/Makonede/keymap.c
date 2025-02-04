@@ -103,7 +103,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum VideoCommand : uint8_t {
-  VIDEO_INIT,
+  VIDEO_INIT = 0x1,
   VIDEO_FRAME,
   VIDEO_END,
 } VideoCommand;
