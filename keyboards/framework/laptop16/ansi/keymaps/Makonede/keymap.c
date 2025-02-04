@@ -3,6 +3,7 @@
 
 #include QMK_KEYBOARD_H
 #include "framework.h"
+#include "state.h"
 
 // clang-format off
 enum _layers {
@@ -103,15 +104,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum VideoCommand : uint8_t {
-  VIDEO_INIT,
+  VIDEO_INIT = 0x1,
   VIDEO_FRAME,
   VIDEO_END,
 } VideoCommand;
-
-typedef struct VideoInit {
-  uint8_t x, y, width, height, leds;
-  bool rgb;
-} VideoInit;
 
 typedef struct VideoReport {
   VideoCommand command;
@@ -121,12 +117,13 @@ typedef struct VideoReport {
   } data;
 } VideoReport;
 
+VideoInit videoInit = {};
 static uint8_t videoMode = RGB_MATRIX_NONE;
-static VideoInit videoInit = {};
-static uint8_t *videoFrame;
+uint8_t *videoFrame;
 static size_t videoFrameSize = 0;
 static size_t videoFrameReceived = 0;
-static uint8_t videoLeds[RGB_MATRIX_LED_COUNT];
+uint8_t *videoScreen;
+uint8_t videoLeds[RGB_MATRIX_LED_COUNT];
 
 void raw_hid_receive(uint8_t *data, uint8_t length) {
   VideoReport report = *(VideoReport *)data;
@@ -134,10 +131,11 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     case VIDEO_INIT: {
       // Save current matrix mode and initialize video data
       videoMode = rgb_matrix_get_mode();
-      rgb_matrix_mode(RGB_MATRIX_NONE);
       videoInit = report.data.init;
       videoFrameSize = videoInit.leds * (videoInit.rgb ? 3 : 1);
       videoFrame = (uint8_t *)malloc(videoFrameSize);
+      videoScreen = (uint8_t *)malloc(videoFrameSize);
+      memset(videoScreen, 0, videoFrameSize);
       videoFrameReceived = 0;
 
       // Enumerate LEDs in frame
@@ -154,6 +152,8 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         }
       }
 
+      rgb_matrix_mode_noeeprom(RGB_MATRIX_CUSTOM_video);
+      rgb_matrix_set_color_all(RGB_OFF);
       break;
     }
 
@@ -169,15 +169,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
         + sizeof report.data.frame;
 
       // Draw frame
-      if (done) for (uint8_t i = 0; i < videoInit.leds; ++i) {
-        if (videoInit.rgb) rgb_matrix_set_color(
-          videoLeds[i], videoFrame[i * 3], videoFrame[i * 3 + 1],
-          videoFrame[i * 3 + 2]
-        );
-        else rgb_matrix_set_color(
-          videoLeds[i], videoFrame[i], videoFrame[i], videoFrame[i]
-        );
-      }
+      if (done) memcpy(videoScreen, videoFrame, videoFrameSize);
 
       break;
     }
@@ -185,6 +177,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     case VIDEO_END:
       // Free frame buffer and reset original matrix mode
       free(videoFrame);
-      rgb_matrix_mode(videoMode);
+      free(videoScreen);
+      rgb_matrix_mode_noeeprom(videoMode);
   }
 }
