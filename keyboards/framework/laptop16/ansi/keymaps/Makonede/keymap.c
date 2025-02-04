@@ -135,6 +135,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
       // Save current matrix mode and initialize video data
       videoMode = rgb_matrix_get_mode();
       rgb_matrix_mode(RGB_MATRIX_NONE);
+      rgb_matrix_set_color_all(RGB_OFF);
       videoInit = report.data.init;
       videoFrameSize = videoInit.leds * (videoInit.rgb ? 3 : 1);
       videoFrame = (uint8_t *)malloc(videoFrameSize);
