@@ -121,7 +121,7 @@ typedef struct VideoReport {
   } data;
 } VideoReport;
 
-static uint8_t videoMode = RGB_MATRIX_CUSTOM_blank;
+static uint8_t videoMode = RGB_MATRIX_CYCLE_LEFT_RIGHT;
 static VideoInit videoInit = {};
 static uint8_t *videoFrame;
 static size_t videoFrameSize = 0;
