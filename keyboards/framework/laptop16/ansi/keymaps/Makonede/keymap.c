@@ -134,7 +134,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     case VIDEO_INIT: {
       // Save current matrix mode and initialize video data
       videoMode = rgb_matrix_get_mode();
-      rgb_matrix_mode_noeeprom(RGB_MATRIX_CUSTOM_blank);
+      rgb_matrix_mode(RGB_MATRIX_CUSTOM_blank);
       rgb_matrix_set_color_all(RGB_OFF);
       videoInit = report.data.init;
       videoFrameSize = videoInit.leds * (videoInit.rgb ? 3 : 1);
@@ -186,6 +186,6 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     case VIDEO_END:
       // Free frame buffer and reset original matrix mode
       free(videoFrame);
-      rgb_matrix_mode_noeeprom(videoMode);
+      rgb_matrix_mode(videoMode);
   }
 }
