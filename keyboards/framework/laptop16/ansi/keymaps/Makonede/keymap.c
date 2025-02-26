@@ -186,6 +186,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     case VIDEO_END:
       // Free frame buffer and reset original matrix mode
       free(videoFrame);
+      rgb_matrix_set_color_all(RGB_OFF);
       rgb_matrix_mode(videoMode);
   }
 }
