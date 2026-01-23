@@ -125,37 +125,39 @@ typedef struct VideoReport {
     } data;
 } VideoReport;
 
-static uint8_t videoMode = RGB_MATRIX_CYCLE_LEFT_RIGHT;
-static VideoInit videoInit = {};
-static uint8_t *videoFrame;
-static size_t videoFrameSize = 0;
-static size_t videoFrameReceived = 0;
-static uint8_t videoLeds[RGB_MATRIX_LED_COUNT];
+static uint8_t video_mode = RGB_MATRIX_CYCLE_LEFT_RIGHT;
+static VideoInit video_init = {};
+static uint8_t *video_frame;
+static size_t video_frame_size = 0;
+static size_t video_frame_received = 0;
+static uint8_t video_leds[RGB_MATRIX_LED_COUNT];
 
 void raw_hid_receive(uint8_t* data, uint8_t length) {
     VideoReport report = *(VideoReport*)data;
     switch (report.command) {
         case VIDEO_INIT: {
             // Save current matrix mode and initialize video data
-            videoMode = rgb_matrix_get_mode();
+            video_mode = rgb_matrix_get_mode();
             rgb_matrix_mode(RGB_MATRIX_CUSTOM_blank);
             rgb_matrix_set_color_all(RGB_OFF);
-            videoInit = report.data.init;
-            videoFrameSize = videoInit.leds * (videoInit.rgb ? 3 : 1);
-            videoFrame = (uint8_t*)malloc(videoFrameSize);
-            videoFrameReceived = 0;
+            video_init = report.data.init;
+            video_frame_size = video_init.leds * (video_init.rgb ? 3 : 1);
+            video_frame = (uint8_t*)malloc(video_frame_size);
+            video_frame_received = 0;
 
             // Enumerate LEDs in frame
-            uint8_t ledIndex = 0;
+            uint8_t led_index = 0;
             for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; ++i) {
                 if (
-                    videoInit.x <= g_led_config.point[i].x
-                    && g_led_config.point[i].x <= videoInit.x + videoInit.width
-                    && videoInit.y <= g_led_config.point[i].y
-                    && g_led_config.point[i].y <= videoInit.y + videoInit.height
+                    video_init.x <= g_led_config.point[i].x
+                    && g_led_config.point[i].x
+                    <= video_init.x + video_init.width
+                    && video_init.y <= g_led_config.point[i].y
+                    && g_led_config.point[i].y
+                    <= video_init.y + video_init.height
                 ) {
-                    videoLeds[ledIndex++] = i;
-                    if (ledIndex == videoInit.leds) break;
+                    video_leds[led_index++] = i;
+                    if (led_index == video_init.leds) break;
                 }
             }
 
@@ -165,25 +167,28 @@ void raw_hid_receive(uint8_t* data, uint8_t length) {
         case VIDEO_FRAME: {
             // Write frame data until complete, may be split over several
             // reports
-            size_t remaining = videoFrameSize - videoFrameReceived;
+            size_t remaining = video_frame_size - video_frame_received;
             bool done = remaining <= sizeof report.data.frame;
             memcpy(
-                videoFrame + videoFrameReceived, &report.data.frame,
+                video_frame + video_frame_received, &report.data.frame,
                 done ? remaining : sizeof report.data.frame
             );
-            videoFrameReceived = done ? 0 : videoFrameReceived
+            video_frame_received = done ? 0 : video_frame_received
                 + sizeof report.data.frame;
 
             // Draw frame
-            if (done) for (uint8_t i = 0; i < videoInit.leds; ++i) {
-                if (videoInit.rgb) rgb_matrix_set_color(
-                    videoLeds[i],
-                    videoFrame[i * 3],
-                    videoFrame[i * 3 + 1],
-                    videoFrame[i * 3 + 2]
+            if (done) for (uint8_t i = 0; i < video_init.leds; ++i) {
+                if (video_init.rgb) rgb_matrix_set_color(
+                    video_leds[i],
+                    video_frame[i * 3],
+                    video_frame[i * 3 + 1],
+                    video_frame[i * 3 + 2]
                 );
                 else rgb_matrix_set_color(
-                    videoLeds[i], videoFrame[i], videoFrame[i], videoFrame[i]
+                    video_leds[i],
+                    video_frame[i],
+                    video_frame[i],
+                    video_frame[i]
                 );
             }
 
@@ -192,8 +197,8 @@ void raw_hid_receive(uint8_t* data, uint8_t length) {
 
         case VIDEO_END:
             // Free frame buffer and reset original matrix mode
-            free(videoFrame);
+            free(video_frame);
             rgb_matrix_set_color_all(RGB_OFF);
-            rgb_matrix_mode(videoMode);
+            rgb_matrix_mode(video_mode);
     }
 }
